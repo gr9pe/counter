@@ -13,22 +13,37 @@ datasource db {
   provider = "postgresql"
 }
 
-model profiles {
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  name          String?
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  profile       Profile?
+}
+
+model Profile {
   id         BigInt     @id @default(autoincrement())
+  userId     String     @unique
   name       String?
   sex        String?
   weight_kg  Decimal?
   created_at DateTime   @default(now())
 
-  drinks     drinks[]
+  user       User       @relation(fields: [userId], references: [id])
+  drinks     Drink[]
 }
 
-model drinks {
+model Drink {
   id         BigInt     @id @default(autoincrement())
   created_at DateTime   @default(now())
   profile_id BigInt
   amount_ml  Decimal?
   type       String?
 
-  profile    profiles   @relation(fields: [profile_id], references: [id])
+  profile    Profile    @relation(fields: [profile_id], references: [id])
 }
