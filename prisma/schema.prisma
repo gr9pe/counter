@@ -23,27 +23,27 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  profile       Profile?
+  profile Profile?
+  drinks  Drink[]
 }
 
 model Profile {
-  id         String     @id @default(cuid())
-  userId     String     @unique
+  id         String   @id @default(cuid())
+  userId     String   @unique
   name       String?
   sex        String?
   weight_kg  Decimal?
-  created_at DateTime   @default(now())
+  created_at DateTime @default(now())
 
-  user       User       @relation(fields: [userId], references: [id])
-  drinks     Drink[]
+  user   User    @relation(fields: [userId], references: [id])
 }
 
 model Drink {
-  id         String     @id @default(cuid())
-  created_at DateTime   @default(now())
-  profile_id String
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  userId     String
   amount_ml  Decimal?
   type       String?
 
-  profile    Profile    @relation(fields: [profile_id], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 }

@@ -37,7 +37,7 @@ export default function HomePage() {
       setRecords((prev) => [newRecord, ...prev]);
     } catch (err) {
       alert('記録中にエラーが発生しました');
-      console.log(err);
+      console.log(err)
     } finally {
       setLoading(false);
     }

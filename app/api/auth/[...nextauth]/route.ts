@@ -13,23 +13,13 @@ export const authOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        console.log("prisma test start");
-        try {
-            const test = await prisma.user.findMany();
-            console.log("prisma test OK", test.length);
-            } catch (e) {
-            console.error("prisma test error:", e);
-            }
-            console.log("prisma test end");
         if (!credentials?.email || !credentials?.password) {
-        console.log("missing credentials");
           return null
         }
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email }
         })
-        console.log("user item:", user);
 
         if (!user) {
           // 新規ユーザー作成
@@ -41,7 +31,6 @@ export const authOptions = {
               name: credentials.email.split('@')[0],
             }
           })
-          console.log(newUser)
           // プロフィールも作成
           await prisma.profile.create({
             data: {
@@ -59,16 +48,12 @@ export const authOptions = {
 
         // 既存ユーザーのパスワードチェック
         if (!user.password) {
-            console.log(user.password)
           return null
         }
 
         const isValid = await compare(credentials.password, user.password)
         
         if (!isValid) {
-            console.log("IS NOT VALID");
-            console.log(credentials.password);
-            console.log(user.password);
           return null
         }
 

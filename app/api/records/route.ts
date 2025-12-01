@@ -22,11 +22,12 @@ export async function GET(request: NextRequest) {
     const date = searchParams.get('date'); // 'today' など
 
     // ユーザーのプロフィールを取得
-    const profile = await prisma.profile.findUnique({
-      where: { userId: session.user.id }
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id }
     });
+    console.log(user);
 
-    if (!profile) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Profile not found' },
         { status: 404 }
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
     }
 
     const where: any = {
-      profile_id: profile.id,
+      userId: user.id,
     };
     
     if (type) {
@@ -64,7 +65,7 @@ export async function GET(request: NextRequest) {
     const records = await prisma.drink.findMany({
       where,
       include: {
-        profile: true,
+        user: true,
       },
       orderBy: {
         created_at: 'desc',
@@ -95,11 +96,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // ユーザーのプロフィールを取得
-    const profile = await prisma.profile.findUnique({
-      where: { userId: session.user.id }
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id }
     });
 
-    if (!profile) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Profile not found' },
         { status: 404 }
@@ -109,13 +110,13 @@ export async function POST(request: NextRequest) {
     // 最小限のバリデーション - amount_mlはオプションに
     const record = await prisma.drink.create({
       data: {
-        profile_id: profile.id,
+        userId: user.id,
         amount_ml: body.amount_ml ? parseFloat(body.amount_ml) : null,
         type: body.type || null,
         created_at: body.created_at ? new Date(body.created_at) : undefined,
       },
       include: {
-        profile: true,
+        user: true,
       },
     });
 
@@ -151,11 +152,11 @@ export async function PUT(request: NextRequest) {
     }
 
     // ユーザーのプロフィールを取得
-    const profile = await prisma.profile.findUnique({
-      where: { userId: session.user.id }
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id }
     });
 
-    if (!profile) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Profile not found' },
         { status: 404 }
@@ -166,7 +167,7 @@ export async function PUT(request: NextRequest) {
     const existingRecord = await prisma.drink.findFirst({
       where: {
         id: String(id),
-        profile_id: profile.id,
+        userId: user.id,
       },
     });
 
@@ -189,7 +190,7 @@ export async function PUT(request: NextRequest) {
         created_at: body.created_at ? new Date(body.created_at) : undefined,
       },
       include: {
-        profile: true,
+        user: true,
       },
     });
 
@@ -225,11 +226,11 @@ export async function DELETE(request: NextRequest) {
     }
 
     // ユーザーのプロフィールを取得
-    const profile = await prisma.profile.findUnique({
-      where: { userId: session.user.id }
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id }
     });
 
-    if (!profile) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Profile not found' },
         { status: 404 }
@@ -240,7 +241,7 @@ export async function DELETE(request: NextRequest) {
     const existingRecord = await prisma.drink.findFirst({
       where: {
         id: String(id),
-        profile_id: profile.id,
+        userId: user.id,
       },
     });
 
