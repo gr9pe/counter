@@ -27,7 +27,7 @@ model User {
 }
 
 model Profile {
-  id         BigInt     @id @default(autoincrement())
+  id         String     @id @default(cuid())
   userId     String     @unique
   name       String?
   sex        String?
@@ -39,9 +39,9 @@ model Profile {
 }
 
 model Drink {
-  id         BigInt     @id @default(autoincrement())
+  id         String     @id @default(cuid())
   created_at DateTime   @default(now())
-  profile_id BigInt
+  profile_id String
   amount_ml  Decimal?
   type       String?
 

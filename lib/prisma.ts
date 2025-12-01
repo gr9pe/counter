@@ -1,14 +1,16 @@
 import { PrismaClient } from "@/app/generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 
 
 declare global {
   var prisma: PrismaClient | undefined;
 }
 
-const url = process.env.PRISMA_DATA_PROXY_URL || "dummy"
-
+const adapter = new PrismaPg({ 
+  connectionString: process.env.DATABASE_URL 
+});
 export const prisma =
   global.prisma ??
-  new PrismaClient({accelerateUrl: url});
+  new PrismaClient({adapter: adapter});
 
 if (process.env.NODE_ENV !== "production") global.prisma = prisma;

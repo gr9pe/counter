@@ -165,7 +165,7 @@ export async function PUT(request: NextRequest) {
     // 記録がユーザーのものか確認
     const existingRecord = await prisma.drink.findFirst({
       where: {
-        id: BigInt(id),
+        id: String(id),
         profile_id: profile.id,
       },
     });
@@ -181,7 +181,7 @@ export async function PUT(request: NextRequest) {
     
     const record = await prisma.drink.update({
       where: {
-        id: BigInt(id),
+        id: String(id),
       },
       data: {
         amount_ml: body.amount_ml !== undefined ? parseFloat(body.amount_ml) : undefined,
@@ -239,7 +239,7 @@ export async function DELETE(request: NextRequest) {
     // 記録がユーザーのものか確認
     const existingRecord = await prisma.drink.findFirst({
       where: {
-        id: BigInt(id),
+        id: String(id),
         profile_id: profile.id,
       },
     });
@@ -253,7 +253,7 @@ export async function DELETE(request: NextRequest) {
 
     await prisma.drink.delete({
       where: {
-        id: BigInt(id),
+        id: String(id),
       },
     });
 

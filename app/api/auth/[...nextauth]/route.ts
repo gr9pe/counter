@@ -14,8 +14,13 @@ export const authOptions = {
       },
       async authorize(credentials) {
         console.log("prisma test start");
-        console.log(process.env.DATABASE_URL);
-        console.log("prisma test end");
+        try {
+            const test = await prisma.user.findMany();
+            console.log("prisma test OK", test.length);
+            } catch (e) {
+            console.error("prisma test error:", e);
+            }
+            console.log("prisma test end");
         if (!credentials?.email || !credentials?.password) {
         console.log("missing credentials");
           return null

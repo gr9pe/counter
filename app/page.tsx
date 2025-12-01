@@ -1,63 +1,73 @@
-import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
-import DrinkButton from "./components/DrinkButton";
-import TodayRecords from "./components/TodayRecords";
-import ProfileEditor from "./components/ProfileEditor";
-import { authOptions } from "./api/auth/[...nextauth]/route";
+'use client';
 
-export default async function HomePage() {
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    redirect("/auth/signin");
-  }
+import { useEffect, useState } from 'react';
+
+interface Record {
+  id: string;
+  drank_at: string;
+  type?: string | null;
+  amount_ml?: number | null;
+}
+
+export default function HomePage() {
+  const [records, setRecords] = useState<Record[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchRecords = async () => {
+    const res = await fetch('/api/records?date=today');
+    const data = await res.json();
+    setRecords(data);
+  };
+
+  useEffect(() => {
+    fetchRecords();
+  }, []);
+
+  const handleQuickDrink = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/records', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount_ml: null, type: null }),
+      });
+      if (!res.ok) throw new Error('記録失敗');
+      const newRecord = await res.json();
+      // 成功時に state に追加 → 自動で UI 更新
+      setRecords((prev) => [newRecord, ...prev]);
+    } catch (err) {
+      alert('記録中にエラーが発生しました');
+      console.log(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <main className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-md mx-auto space-y-6">
-        <header className="text-center">
-          <h1 className="text-2xl font-bold text-gray-800">飲酒量管理アプリ</h1>
-          <p className="text-gray-600 mt-1">今日の飲酒を記録してBACを計算</p>
-        </header>
+    <main className="p-4 max-w-md mx-auto space-y-6">
+      <button
+        onClick={handleQuickDrink}
+        disabled={loading}
+        className="w-full bg-blue-500 hover:bg-blue-600 text-white py-4 rounded-lg text-lg"
+      >
+        {loading ? '記録中...' : '1杯飲んだ！'}
+      </button>
 
-        <div className="bg-white rounded-xl shadow-lg p-4">
-          <h2 className="text-lg font-bold mb-4">今すぐ記録</h2>
-          <p className="text-gray-600 text-sm mb-4">
-            飲んでいる最中でも使えるよう、最小 1 タップで記録可能
-          </p>
-          <DrinkButton onDrinkRecorded={() => window.location.reload()} />
-        </div>
-
-        <div className="bg-white rounded-xl shadow-lg p-4">
-          <TodayRecords />
-        </div>
-
-        <div className="bg-white rounded-xl shadow-lg p-4">
-          <ProfileEditor />
-        </div>
-
-        <div className="bg-white rounded-xl shadow-lg p-4">
-          <h2 className="text-lg font-bold mb-4">X（旧Twitter）に投稿</h2>
-          <p className="text-gray-600 text-sm mb-4">
-            今日の記録をXに投稿できます
-          </p>
-          <button
-            onClick={() => {
-              const text = encodeURIComponent(
-                `今日の飲酒記録を記録しました！ #飲酒管理アプリ`
-              );
-              window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank');
-            }}
-            className="w-full bg-black hover:bg-gray-800 text-white font-bold py-3 px-4 rounded-lg transition-colors"
-          >
-            今日の記録を投稿
-          </button>
-        </div>
-
-        <footer className="text-center text-gray-500 text-sm pt-4">
-          <p>BAC計算はWidmark公式に基づいています</p>
-          <p className="mt-1">※このアプリは飲酒運転を推奨するものではありません</p>
-        </footer>
-      </div>
+      <section>
+        {records.length === 0 ? (
+          <p>まだ記録がありません</p>
+        ) : (
+          <ul className="space-y-2">
+            {records.map((r) => (
+              <li key={r.id} className="border rounded-md p-3 flex justify-between">
+                <span>{new Date(r.drank_at).toLocaleTimeString()}</span>
+                <span>{r.type || '-'}</span>
+                <span>{r.amount_ml ?? '-' } ml</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </main>
   );
 }
