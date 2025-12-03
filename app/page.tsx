@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import ProfileEditor from './components/ProfileEditor';
 import DrinkEditModal from './components/EditModal';
 import { calculateTotalBAC, getBACStatus } from './lib/bacCalculator';
+import router from 'next/router';
 
 interface DrinkRecord {
   id: string;
@@ -51,7 +52,7 @@ export default function HomePage() {
         throw new Error('記録の取得に失敗しました');
       }
       if (!profileResponse.ok) {
-        throw new Error('プロフィールの取得に失敗しました');
+        router.push('/auth/signin');
       }
 
       const [recordsData, profileData] = await Promise.all([
