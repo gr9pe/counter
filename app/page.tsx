@@ -4,7 +4,9 @@ import { useEffect, useState, useCallback } from 'react';
 import ProfileEditor from './components/ProfileEditor';
 import DrinkEditModal from './components/EditModal';
 import { calculateTotalBAC, getBACStatus } from './lib/bacCalculator';
-import router from 'next/router';
+import { useSession } from 'next-auth/react';
+import { signOut } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 interface DrinkRecord {
   id: string;
@@ -36,8 +38,15 @@ export default function HomePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter()
+  const { data: session, status } = useSession();
 
-  // データ取得を useCallback でメモ化
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/api/auth/signin'); 
+    }
+  }, [status, router]);
+
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -52,7 +61,7 @@ export default function HomePage() {
         throw new Error('記録の取得に失敗しました');
       }
       if (!profileResponse.ok) {
-        router.push('/auth/signin');
+        throw new Error('記録の取得に失敗しました');
       }
 
       const [recordsData, profileData] = await Promise.all([
@@ -109,17 +118,37 @@ export default function HomePage() {
     }
   }, [fetchData]);
 
+  if (!session) return null;
+
   return (
     <div className="min-h-screen">
       {/* ナビバー */}
       <nav className="shadow-md p-4 flex justify-between items-center">
-        <span className="font-bold text-lg">酒量管理</span>
-        <button
-          onClick={() => setIsProfileOpen(true)}
-          className="text-blue-600 font-semibold hover:underline"
-        >
-          プロフィール
-        </button>
+        {/* 左側: タイトル */}
+        <span className="font-bold text-lg">酒</span>
+        
+        {/* 右側: ボタン群をまとめるコンテナを追加 */}
+        <div className="flex items-center space-x-4">
+          
+          {/* ログアウトボタン (セッションがある場合のみ) */}
+          {session && ( 
+            <button
+              onClick={() => {signOut();}}
+              className="text-red-500 font-semibold hover:underline text-sm"
+            >
+              ログアウト
+            </button>
+          )}
+          
+          {/* プロフィールボタン */}
+          <button
+            onClick={() => setIsProfileOpen(true)}
+            // プロフィールボタンは視認性を保つため、少し大きいテキストサイズを維持しても良い
+            className="text-blue-600 font-semibold hover:underline"
+          >
+            プロフィール
+          </button>
+        </div>
       </nav>
 
       <main className="p-4 max-w-md mx-auto space-y-6">
