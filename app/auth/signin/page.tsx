@@ -39,10 +39,10 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="max-w-md w-full rounded-xl shadow-lg p-8">
         <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">
-          飲酒量管理アプリ
+          市区町村酒TWEET
         </h1>
         
         <form onSubmit={handleSubmit} className="space-y-4">

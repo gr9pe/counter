@@ -38,7 +38,7 @@ export function calculateAlcoholGrams(amountMl: number, alcoholPercentage: numbe
 }
 
 /**
- * BACを計算
+ * BACを計算（単位: %）
  */
 export function calculateBAC(
   alcoholGrams: number,
@@ -46,14 +46,18 @@ export function calculateBAC(
   sex: 'male' | 'female' | string,
   hoursSinceDrinking: number = 0
 ): number {
+  if (weightKg <= 0) return 0;
+  
   const r = sex === 'male' ? R_VALUES.male : 
             sex === 'female' ? R_VALUES.female : 
             R_VALUES.default;
   
-  if (weightKg <= 0) return 0;
+  // Widmark公式: BAC(%) = (アルコールg / (体重kg * r)) - (代謝率 * 経過時間h)
+  const initialBAC = (alcoholGrams / (weightKg * r * 1000)) * 100; // %に変換
+  const metabolizedBAC = METABOLISM_RATE * hoursSinceDrinking;
+  const currentBAC = initialBAC - metabolizedBAC;
   
-  const bac = (alcoholGrams / (weightKg * r)) - (METABOLISM_RATE * hoursSinceDrinking);
-  return Math.max(0, bac); // BACは0以下にならない
+  return Math.max(0, currentBAC); // BACは0以下にならない
 }
 
 /**
@@ -76,7 +80,7 @@ export function getBACStatus(bac: number): {
     return {
       level: 'mild',
       description: '軽い酔い',
-      icon: '😐',
+      icon: '😊',
       color: 'text-yellow-500'
     };
   } else if (bac < 0.10) {
@@ -104,12 +108,12 @@ export function getBACStatus(bac: number): {
 }
 
 /**
- * 飲酒記録からBACを計算
+ * 飲酒記録からBACを計算（単一の記録）
  */
 export function calculateBACFromDrink(
-  amountMl: number | null,
-  drinkType: string | null,
-  weightKg: number | null,
+  amountMl: number | null = 500,
+  drinkType: string | null = "beer",
+  weightKg: number | null = 60,
   sex: string | null,
   hoursSinceDrinking: number = 0
 ): number {
@@ -124,18 +128,19 @@ export function calculateBACFromDrink(
 }
 
 /**
- * 複数の飲酒記録から合計BACを計算
+ * 複数の飲酒記録から合計BACを計算（各記録ごとに個別に代謝を計算）
  */
 export function calculateTotalBAC(
   drinks: Array<{ amount_ml: number | null; type: string | null; created_at: Date }>,
-  weightKg: number | null,
+  weightKg: number = 60,
   sex: string | null
 ): number {
-  if (!weightKg || drinks.length === 0) return 0;
+  if (drinks.length === 0) return 0;
   
-  let totalAlcoholGrams = 0;
   const now = new Date();
+  let totalBAC = 0;
   
+  // 各飲酒記録ごとに個別にBACを計算して合算
   drinks.forEach(drink => {
     if (!drink.amount_ml) return;
     
@@ -144,15 +149,15 @@ export function calculateTotalBAC(
       : ALCOHOL_PERCENTAGES.other;
     
     const alcoholGrams = calculateAlcoholGrams(drink.amount_ml, alcoholPercentage);
-    totalAlcoholGrams += alcoholGrams;
+    
+    // この飲酒からの経過時間を計算
+    const hoursSinceDrinking = (now.getTime() - drink.created_at.getTime()) / (1000 * 60 * 60);
+    
+    // この飲酒によるBACを計算（代謝も考慮）
+    const drinkBAC = calculateBAC(alcoholGrams, weightKg, sex || 'male', hoursSinceDrinking);
+    
+    totalBAC += drinkBAC;
   });
   
-  // 最後の飲酒からの経過時間を計算
-  const lastDrinkTime = drinks.reduce((latest, drink) => {
-    return drink.created_at > latest ? drink.created_at : latest;
-  }, new Date(0));
-  
-  const hoursSinceLastDrink = (now.getTime() - lastDrinkTime.getTime()) / (1000 * 60 * 60);
-  
-  return calculateBAC(totalAlcoholGrams, weightKg, sex || 'male', hoursSinceLastDrink);
+  return totalBAC;
 }
