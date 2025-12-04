@@ -125,7 +125,7 @@ export default function HomePage() {
       {/* ナビバー */}
       <nav className="shadow-md p-4 flex justify-between items-center">
         {/* 左側: タイトル */}
-        <span className="font-bold text-lg">酒</span>
+        <span className="font-bold text-lg">🍺</span>
         
         {/* 右側: ボタン群をまとめるコンテナを追加 */}
         <div className="flex items-center space-x-4">
@@ -134,7 +134,7 @@ export default function HomePage() {
           {session && ( 
             <button
               onClick={() => {signOut();}}
-              className="text-red-500 font-semibold hover:underline text-sm"
+              className="text-red-700 font-semibold hover:underline text-sm"
             >
               ログアウト
             </button>
@@ -143,8 +143,7 @@ export default function HomePage() {
           {/* プロフィールボタン */}
           <button
             onClick={() => setIsProfileOpen(true)}
-            // プロフィールボタンは視認性を保つため、少し大きいテキストサイズを維持しても良い
-            className="text-blue-600 font-semibold hover:underline"
+            className="text-700 font-semibold hover:underline text-sm"
           >
             プロフィール
           </button>
@@ -160,7 +159,7 @@ export default function HomePage() {
         )}
 
         {/* 上部ボタン */}
-        <div className="sticky top-4 z-10">
+        <div className="sticky top-4 z-10 p-4">
           <DrinkButton 
             onDrinkRecorded={handleDrinkRecorded}
             disabled={isLoading}
@@ -256,7 +255,7 @@ function DrinkButton({ onDrinkRecorded, disabled }: DrinkButtonProps) {
     <button
       onClick={handleQuickDrink}
       disabled={isLoading || disabled}
-      className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-6 rounded-lg text-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      className="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-4 px-6 rounded-lg text-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {isLoading ? '記録中...' : '1杯飲んだ！'}
     </button>
@@ -300,8 +299,7 @@ function TodayRecords({ records, profile, isLoading, onDelete, onEdit }: TodayRe
   if (records.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
-        今日の記録はまだありません。<br />
-        「1杯飲んだ！」ボタンで記録を始めましょう。
+        今日の記録はまだありません。
       </div>
     );
   }
@@ -431,7 +429,7 @@ export function SummaryShareButton({
 
         const location = await reverseGeocode(latitude, longitude);
 
-        const tweetText = `今日は${location}で${recordsCount}杯飲みました！現在の推定BACは${bac.toFixed(3)}%です！`;
+        const tweetText = `今日は${location}で${recordsCount}杯飲みました！現在の推定BACは${bac.toFixed(3)}%です`;
 
         openTweet(tweetText);
         setLoading(false);
