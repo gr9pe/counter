@@ -144,7 +144,7 @@ export default function HomePage() {
       <nav className="shadow-md p-4 flex justify-between items-center 
                     w-full z-20 bg-white dark:bg-neutral-900 sticky top-0">
         {/* 左側: タイトル */}
-        <span className="font-bold text-lg">🍺</span>
+        <span className="font-bold text-lg"></span>
         
         {/* 右側: ボタン群をまとめるコンテナを追加 */}
         <div className="flex items-center space-x-4">
@@ -276,7 +276,7 @@ function DrinkButton({ onDrinkRecorded, disabled }: DrinkButtonProps) {
       disabled={isLoading || disabled}
       className="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-4 px-6 rounded-lg text-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
     >
-      {isLoading ? '記録中...' : '1杯飲んだ！'}
+      {isLoading ? '記録中...' : '🍺'}
     </button>
   );
 }
@@ -401,7 +401,6 @@ function TodayRecords({ records, profile, isLoading, onDelete, onEdit }: TodayRe
 
       {/* 記録一覧 */}
       <div className="space-y-2">
-        <h3 className="font-bold">記録一覧</h3>
         {records.map((record) => (
           <div
             key={record.id}
