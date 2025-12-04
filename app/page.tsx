@@ -230,8 +230,8 @@ function DrinkButton({ onDrinkRecorded, disabled }: DrinkButtonProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          amount_ml: null,
-          type: null,
+          amount_ml: 500,
+          type: "beer",
         }),
       });
 
