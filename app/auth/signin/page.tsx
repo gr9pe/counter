@@ -42,7 +42,7 @@ export default function SignInPage() {
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="max-w-md w-full rounded-xl shadow-lg p-8">
         <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">
-          市区町村酒TWEET
+          酒コンパス
         </h1>
         
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -93,7 +93,6 @@ export default function SignInPage() {
 
         <div className="mt-6 text-center text-sm text-gray-600">
           <p>初めての方は、ログイン時に自動的にアカウントが作成されます。</p>
-          <p className="mt-2">※パスワードは安全に保存されます</p>
         </div>
 
         <div className="mt-8 pt-6 border-t border-gray-200">

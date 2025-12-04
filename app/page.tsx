@@ -47,57 +47,76 @@ export default function HomePage() {
     }
   }, [status, router]);
 
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    
+  const fetchRecords = useCallback(async () => {
     try {
-      const [recordsResponse, profileResponse] = await Promise.all([
-        fetch('/api/records?date=today'),
-        fetch('/api/profile')
-      ]);
+      const recordsResponse = await fetch('/api/records?date=today');
 
       if (!recordsResponse.ok) {
         throw new Error('記録の取得に失敗しました');
       }
-      if (!profileResponse.ok) {
-        throw new Error('記録の取得に失敗しました');
-      }
 
-      const [recordsData, profileData] = await Promise.all([
-        recordsResponse.json(),
-        profileResponse.json()
-      ]);
-
+      const recordsData: DrinkRecord[] = await recordsResponse.json();
       setRecords(recordsData);
-      setProfile(profileData);
+      setError(null); // 記録取得成功時はエラーをクリア
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '予期しないエラーが発生しました';
       setError(errorMessage);
-      console.error('Error fetching data:', err);
-    } finally {
-      setIsLoading(false);
+      console.error('Error fetching records:', err);
+    }
+  }, []);
+  
+  // プロフィールデータのみを取得する関数 (初回のみ)
+  const fetchProfile = useCallback(async () => {
+    try {
+      const profileResponse = await fetch('/api/profile');
+
+      if (!profileResponse.ok) {
+        // プロフィールがない/エラーの場合、セットせずに終了
+        if (profileResponse.status !== 404) {
+             throw new Error('プロフィール情報の取得に失敗しました');
+        }
+        setProfile(null);
+        return;
+      }
+
+      const profileData: Profile = await profileResponse.json();
+      setProfile(profileData);
+      setError(null);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : '予期しないエラーが発生しました';
+      setError(errorMessage);
+      console.error('Error fetching profile:', err);
     }
   }, []);
 
-  // 初回読み込み
+
+  // 初回読み込み: プロフィールと記録を並列で取得
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    const initialLoad = async () => {
+        if (status === 'authenticated') {
+            setIsLoading(true);
+            await Promise.all([fetchProfile(), fetchRecords()]);
+            setIsLoading(false);
+        }
+    };
+    initialLoad();
+  }, [fetchProfile, fetchRecords, status]);
 
-  // 記録追加後のハンドラー
+  // 記録追加後のハンドラー: 記録を再取得
   const handleDrinkRecorded = useCallback(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchRecords();
+    // 記録APIは新しく追加された記録IDを返すように変更し、
+    // それを使ってローカルのrecordsを更新できれば、fetchRecordsも不要になります。
+    // 今回は記録APIの変更がない前提でfetchRecordsを呼び出します。
+  }, [fetchRecords]);
 
-  // 記録編集後のハンドラー（BAC再計算のため）
+  // 記録編集後のハンドラー: 記録を再取得
   const handleRecordUpdated = useCallback(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchRecords();
+  }, [fetchRecords]);
 
-  // 記録削除のハンドラー
+  // 記録削除のハンドラー: ローカルの状態を更新する
   const handleDelete = useCallback(async (id: string) => {
-    if (!confirm('この記録を削除しますか？')) return;
 
     try {
       const response = await fetch(`/api/records?id=${id}`, {
@@ -108,22 +127,22 @@ export default function HomePage() {
         const error = await response.json();
         throw new Error(error.error || '削除に失敗しました');
       }
-
-      await fetchData();
-      alert('記録を削除しました');
+      
+      // BAC再計算のために、ローカルの状態を更新するだけでAPIコールはしない
+      setRecords(prevRecords => prevRecords.filter(r => r.id !== id));
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '削除中にエラーが発生しました';
       alert(errorMessage);
       console.error('Error deleting record:', err);
     }
-  }, [fetchData]);
-
+  }, []);
   if (!session) return null;
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col">
       {/* ナビバー */}
-      <nav className="shadow-md p-4 flex justify-between items-center">
+      <nav className="shadow-md p-4 flex justify-between items-center 
+                    w-full z-20 bg-white dark:bg-neutral-900 sticky top-0">
         {/* 左側: タイトル */}
         <span className="font-bold text-lg">🍺</span>
         
@@ -150,58 +169,59 @@ export default function HomePage() {
         </div>
       </nav>
 
-      <main className="p-4 max-w-md mx-auto space-y-6">
-        {/* エラー表示 */}
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-            {error}
+      <main className="flex-1 flex flex-col items-center justify-start py-4">
+        <div className="w-full max-w-md px-4 space-y-6">
+          {/* エラー表示 */}
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+              {error}
+            </div>
+          )}
+
+          {/* 上部ボタン */}
+          <div className="z-10">
+            <DrinkButton 
+              onDrinkRecorded={handleDrinkRecorded}
+              disabled={isLoading}
+            />
           </div>
-        )}
 
-        {/* 上部ボタン */}
-        <div className="sticky top-4 z-10 p-4">
-          <DrinkButton 
-            onDrinkRecorded={handleDrinkRecorded}
-            disabled={isLoading}
-          />
-        </div>
+          {/* 今日の記録 */}
+          <div className="rounded-2xl shadow-md p-4 dark:bg-neutral-800">
+            <TodayRecords 
+              records={records}
+              profile={profile}
+              isLoading={isLoading}
+              onDelete={handleDelete}
+              onEdit={setEditingRecord}
+            />
+          </div>
 
-        {/* 今日の記録 */}
-        <div className="rounded-2xl shadow-md p-4">
-          <TodayRecords 
-            records={records}
-            profile={profile}
-            isLoading={isLoading}
-            onDelete={handleDelete}
-            onEdit={setEditingRecord}
-          />
-        </div>
-
-        {/* プロフィールモーダル */}
-        {isProfileOpen && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center
-                      bg-neutral-900/40 dark:bg-neutral-900/60 backdrop-blur-sm"
-            onClick={() => setIsProfileOpen(false)}   // 背景クリックで閉じる
-          >
+          {/* プロフィールモーダル */}
+          {isProfileOpen && (
             <div
-              className="rounded-2xl shadow-lg w-full max-w-md p-6 relative
-                        max-h-[90vh] overflow-y-auto
-                        bg-white dark:bg-neutral-800"
-              onClick={(e) => e.stopPropagation()}    // 内側クリックを止める
+              className="fixed inset-0 z-50 flex items-center justify-center
+                        bg-neutral-900/40 dark:bg-neutral-900/60 backdrop-blur-sm"
+              onClick={() => setIsProfileOpen(false)}   // 背景クリックで閉じる
             >
-          <button
-            onClick={() => setIsProfileOpen(false)}
-            className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 
-                      dark:text-gray-50 dark:hover:text-white text-xl"
-          >
-            ✕
-          </button>
-
-          <ProfileEditor />
-        </div>
-  </div>
-)}
+              <div
+                className="rounded-2xl shadow-lg w-full max-w-md p-6 relative
+                          max-h-[90vh] overflow-y-auto
+                          bg-white dark:bg-neutral-800"
+                onClick={(e) => e.stopPropagation()}    // 内側クリックを止める
+              >
+              <button
+                onClick={() => setIsProfileOpen(false)}
+                className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 
+                          dark:text-gray-50 dark:hover:text-white text-xl"
+              >
+                ✕
+              </button>
+              <ProfileEditor />
+            </div>
+          </div>)}
+      </div>
+    
 
 
         {/* 記録編集モーダル */}
@@ -241,7 +261,6 @@ function DrinkButton({ onDrinkRecorded, disabled }: DrinkButtonProps) {
       }
 
       onDrinkRecorded();
-      alert('1杯記録しました！種類と量を編集してください。');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '記録中にエラーが発生しました';
       alert(errorMessage);
@@ -314,35 +333,70 @@ function TodayRecords({ records, profile, isLoading, onDelete, onEdit }: TodayRe
   return (
     <div className="space-y-4">
       {/* サマリーカード */}
-      <div className="bg-gradient-to-br from-green-200 to-purple-500 p-4 rounded-lg shadow">
-        <div className="flex justify-between items-center mb-3">
-          <h3 className="font-bold text-lg">今日のサマリー</h3>
-          <span className={`text-3xl ${bacStatus.color}`}>{bacStatus.icon}</span>
-        </div>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <div className="text-gray-800">合計飲酒量</div>
-            <div className="font-bold text-lg">{totalAmount} ml</div>
+      <div className={`p-5 rounded-2xl transition-all duration-300
+            // 背景色をシンプルに白/暗いグレーにし、BACに応じて目立つボーダーを適用
+            bg-white dark:bg-neutral-800
+            // BAC状態の説明に色を移譲するため、古いグラデーションを削除
+            `}>
+    
+          {/* ヘッダー: タイトルとアイコン */}
+          <div className="flex justify-between items-start mb-4">
+              <h3 className="font-extrabold text-2xl 
+                            text-gray-900 dark:text-white flex items-center">
+                  今日のサマリ
+              </h3>
+              {/* アイコンは引き続きBAC Statusの色を使用 */}
+              <span className={`text-4xl ${bacStatus.color}`}>{bacStatus.icon}</span>
           </div>
-          <div>
-            <div className="text-gray-800">推定BAC</div>
-            <div className="font-bold text-lg">{bac.toFixed(3)}%</div>
+
+          {/* BAC状態の強調表示 */}
+          <div className={`text-center py-3 px-2 rounded-lg mb-4
+                          font-bold text-lg 
+                          bg-opacity-10 dark:bg-opacity-20`}>
+              <span className="block text-xs font-normal 
+                              text-gray-700 dark:text-gray-300 mb-1">推定状態</span>
+              {/* 状態の説明 */}
+              {bacStatus.description}
           </div>
-          <div className="col-span-2">
-            <div className="text-gray-800">状態</div>
-            <div className={`font-bold ${bacStatus.color}`}>{bacStatus.description}</div>
+
+          {/* 詳細データ (グリッド) */}
+          <div className="grid grid-cols-3 gap-y-4 gap-x-2 text-center">
+              
+              {/* 推定BAC */}
+              <div className="col-span-1 border-r border-gray-200 dark:border-neutral-700">
+                  <div className="text-gray-500 dark:text-gray-400 text-xs font-medium uppercase">推定BAC</div>
+                  <div className="font-extrabold text-xl 
+                                  text-gray-900 dark:text-white">
+                      {bac.toFixed(3)}<span className="text-sm">%</span>
+                  </div>
+              </div>
+              
+              {/* 合計飲酒量 */}
+              <div className="col-span-1 border-r border-gray-200 dark:border-neutral-700">
+                  <div className="text-gray-500 dark:text-gray-400 text-xs font-medium uppercase">合計飲酒量</div>
+                  <div className="font-bold text-xl 
+                                  text-gray-900 dark:text-white">
+                      {totalAmount} <span className="text-sm">ml</span>
+                  </div>
+              </div>
+
+              {/* 記録数 */}
+              <div className="col-span-1">
+                  <div className="text-gray-500 dark:text-gray-400 text-xs font-medium uppercase">記録数</div>
+                  <div className="font-bold text-xl 
+                                  text-gray-900 dark:text-white">
+                      {records.length} <span className="text-sm">杯</span>
+                  </div>
+              </div>
           </div>
-          <div>
-            <div className="text-gray-800">記録数</div>
-            <div className="font-bold text-lg">{records.length}杯</div>
+          
+          {/* 共有ボタン */}
+          <div className="mt-6 pt-4 border-t border-gray-100 dark:border-neutral-700 flex justify-center">
+              <SummaryShareButton
+                  recordsCount={records.length}
+                  bac={bac}
+              />
           </div>
-        </div>
-        <div className="mt-4 flex justify-end">
-          <SummaryShareButton
-            recordsCount={records.length}
-            bac={bac}
-          />
-        </div>
       </div>
 
       {/* 記録一覧 */}
@@ -351,13 +405,15 @@ function TodayRecords({ records, profile, isLoading, onDelete, onEdit }: TodayRe
         {records.map((record) => (
           <div
             key={record.id}
-            className="border border-gray-200 rounded-lg p-3 flex justify-between items-center hover:bg-gray-800 transition-colors"
+            className="border border-gray-200 rounded-lg p-3 flex justify-between items-center 
+                      hover:bg-gray-50 transition-colors 
+                      dark:border-neutral-700 dark:bg-neutral9900 dark:hover:bg-neutral-800" // ダークモード対応
           >
             <div className="flex-1">
-              <div className="font-medium">
+              <div className="font-medium text-gray-900 dark:text-white"> {/* テキストをテーマ対応 */}
                 {record.type || '未設定'} - {record.amount_ml ? `${record.amount_ml}ml` : '量未設定'}
               </div>
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-gray-500 dark:text-gray-400"> {/* 時刻表示をテーマ対応 */}
                 {new Date(record.created_at).toLocaleTimeString('ja-JP', {
                   hour: '2-digit',
                   minute: '2-digit'
@@ -367,13 +423,17 @@ function TodayRecords({ records, profile, isLoading, onDelete, onEdit }: TodayRe
             <div className="flex space-x-2">
               <button
                 onClick={() => onEdit(record)}
-                className="text-blue-500 hover:text-blue-700 text-sm font-medium px-2 py-1"
+                // 編集ボタンをページのテーマカラー（紫）に統一し、ダークモードに対応
+                className="text-500 hover:text-natural-700 text-sm font-medium px-2 py-1 
+                          dark:text-natural-400 dark:hover:text-natural-300" 
               >
                 編集
               </button>
               <button
                 onClick={() => onDelete(record.id)}
-                className="text-red-500 hover:text-red-700 text-sm font-medium px-2 py-1"
+                // 削除ボタンをダークモードに対応
+                className="text-red-500 hover:text-red-700 text-sm font-medium px-2 py-1 
+                          dark:text-red-400 dark:hover:text-red-300"
               >
                 削除
               </button>
@@ -449,10 +509,16 @@ export function SummaryShareButton({
   return (
     <button
       onClick={handleShare}
-      className="text-sm text-blue-500 hover:text-blue-700 underline"
       disabled={loading}
+      // 以前のスタイル: text-sm text-blue-500 hover:text-blue-700 underline
+      
+      // 新しいスタイル: 紫のアウトラインボタン (Twitterブルーではなくアプリのテーマカラーを使用)
+      className="text-sm font-semibold border border-purple-300 text-purple-300 
+                py-1 px-3 rounded-full 
+                hover:bg-purple-50 transition-colors 
+                disabled:opacity-50 disabled:cursor-not-allowed"
     >
-      {loading ? "取得中..." : "Twitterで共有"}
+      {loading ? "取得中..." : "ツイート"}
     </button>
   );
 }
